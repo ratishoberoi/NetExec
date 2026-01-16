@@ -1,13 +1,21 @@
-from os.path import join, normpath, expanduser, dirname
-from os import environ, getenv
-import nxc
+from os.path import join
+import os
 
-if "NXC_PATH" in environ:  # noqa: SIM108
-    NXC_PATH = normpath(getenv("NXC_PATH"))
-else:
-    NXC_PATH = normpath(expanduser("~/.nxc"))
+try:
+    from importlib.resources import files
+except ImportError:
+    from importlib_resources import files
+
+
+# This is the embedded nxc package root (works inside Nuitka EXE)
+NXC_PKG = files("nxc")
+
+# Internal immutable data shipped with the exe
+DATA_PATH = str(NXC_PKG.joinpath("data"))
+
+# Runtime workspace (allowed to be on disk)
+NXC_PATH = os.path.join(os.path.expanduser("~"), ".nxc")
 
 TMP_PATH = join(NXC_PATH, "tmp")
 CONFIG_PATH = join(NXC_PATH, "nxc.conf")
 WORKSPACE_DIR = join(NXC_PATH, "workspaces")
-DATA_PATH = join(dirname(nxc.__file__), "data")

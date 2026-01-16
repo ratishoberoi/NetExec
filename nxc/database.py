@@ -20,7 +20,6 @@ from nxc.loaders.protocolloader import ProtocolLoader
 from nxc.logger import nxc_logger
 from nxc.paths import WORKSPACE_DIR
 
-
 def create_db_engine(db_path):
     return create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
 
@@ -56,19 +55,27 @@ def write_configfile(config, config_path):
 
 
 def init_protocol_dbs(workspace_name, p_loader=None):
-    """Check for each protocol if the database exists, if not create it."""
     if p_loader is None:
         p_loader = ProtocolLoader()
+
     protocols = p_loader.get_protocols()
-    for protocol in protocols:
-        protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
-        proto_db_path = path_join(WORKSPACE_DIR, workspace_name, f"{protocol}.db")
+
+    for name, proto in protocols.items():
+        db_mod = proto.get("db")
+        if not db_mod:
+            continue
+
+        proto_db_path = path_join(WORKSPACE_DIR, workspace_name, f"{name}.db")
 
         if not exists(proto_db_path):
-            print(f"[*] Initializing {protocol.upper()} protocol database")
+            print(f"[*] Initializing {name.upper()} protocol database")
             db_engine = create_db_engine(proto_db_path)
-            protocol_object.database.db_schema(db_engine)
+            db_mod.database.db_schema(db_engine)
             db_engine.dispose()
+
+
+
+
 
 
 def create_workspace(workspace_name, p_loader=None):

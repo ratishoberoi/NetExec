@@ -1,37 +1,49 @@
-from types import ModuleType
-from importlib.machinery import SourceFileLoader
-from os import listdir
-from os.path import join as path_join
-from os.path import dirname, exists
-
-import nxc
+import pkgutil
+import importlib
+import nxc.protocols
 
 
 class ProtocolLoader:
-    def load_protocol(self, protocol_path):
-        loader = SourceFileLoader("protocol", protocol_path)
-        protocol = ModuleType(loader.name)
-        loader.exec_module(protocol)
-        return protocol
-
     def get_protocols(self):
         protocols = {}
+        pkg_path = nxc.protocols.__path__
 
-        proto_path = path_join(dirname(nxc.__file__), "protocols")
-        for protocol in listdir(proto_path):
-            if protocol[-3:] == ".py" and protocol[:-3] != "__init__":
-                protocol_path = path_join(proto_path, protocol)
-                protocol_name = protocol[:-3]
+        for module_info in pkgutil.iter_modules(pkg_path):
+            # 🔴 CRITICAL FIX: only protocol PACKAGES (smb/, ldap/, etc)
+            if not module_info.ispkg:
+                continue
 
-                protocols[protocol_name] = {"path": protocol_path}
+            name = module_info.name
+            base = f"nxc.protocols.{name}"
 
-                db_file_path = path_join(proto_path, protocol_name, "database.py")
-                db_nav_path = path_join(proto_path, protocol_name, "db_navigator.py")
-                protocol_args_path = path_join(proto_path, protocol_name, "proto_args.py")
-                if exists(db_file_path):
-                    protocols[protocol_name]["dbpath"] = db_file_path
-                if exists(db_nav_path):
-                    protocols[protocol_name]["nvpath"] = db_nav_path
-                if exists(protocol_args_path):
-                    protocols[protocol_name]["argspath"] = protocol_args_path
+            try:
+                importlib.import_module(base)
+            except Exception:
+                continue
+
+            proto = {"path": base}
+
+            try:
+                importlib.import_module(f"{base}.database")
+                proto["dbpath"] = f"{base}.database"
+            except Exception:
+                pass
+
+            try:
+                importlib.import_module(f"{base}.db_navigator")
+                proto["nvpath"] = f"{base}.db_navigator"
+            except Exception:
+                pass
+
+            try:
+                importlib.import_module(f"{base}.proto_args")
+                proto["argspath"] = f"{base}.proto_args"
+            except Exception:
+                pass
+
+            protocols[name] = proto
+
         return protocols
+
+    def load_protocol(self, module_path):
+        return importlib.import_module(module_path)

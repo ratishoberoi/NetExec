@@ -451,12 +451,12 @@ class NXCDBMenu(cmd.Cmd):
     def do_proto(self, proto):
         if not proto:
             return
-
+        proto_info = self.protocols[proto]
         proto_db_path = path_join(WORKSPACE_DIR, self.workspace, f"{proto}.db")
         if exists(proto_db_path):
             self.conn = create_db_engine(proto_db_path)
-            db_nav_object = self.p_loader.load_protocol(self.protocols[proto]["nvpath"])
-            db_object = self.p_loader.load_protocol(self.protocols[proto]["dbpath"])
+            db_nav_object = proto_info.get("navigator")
+            db_object = proto_info.get("db")
             self.config.set("nxc", "last_used_db", proto)
             write_configfile(self.config, self.config_path)
             try:
